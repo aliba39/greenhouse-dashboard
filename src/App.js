@@ -15,6 +15,7 @@ import {
   FaExclamationTriangle,
   FaChevronLeft,
   FaChevronRight,
+  FaSeedling,
 } from "react-icons/fa";
 
 import {
@@ -403,6 +404,41 @@ function App() {
     });
   }
 
+  //================= PLANT PROFILES =================
+  const plantProfiles = {
+
+    Tomato: {
+      temp: "22-30°C",
+      hum: "60-80%",
+      soil: "50-70%",
+      color: "#ef4444",
+    },
+
+    Lettuce: {
+      temp: "15-22°C",
+      hum: "50-70%",
+      soil: "60-80%",
+      color: "#22c55e",
+    },
+
+    Cucumber: {
+      temp: "20-28°C",
+      hum: "70-90%",
+      soil: "65-85%",
+      color: "#38bdf8",
+    },
+
+    Pepper: {
+      temp: "18-26°C",
+      hum: "50-70%",
+      soil: "55-75%",
+      color: "#f59e0b",
+    },
+
+  };
+
+  // ================= RENDER =================
+
   return (
     <div
       style={theme.container(
@@ -542,6 +578,16 @@ function App() {
               setActivePage(
                 "controls"
               )
+            }
+          />
+
+          <SidebarItem
+            icon={<FaSeedling />}
+            text="Plants"
+            active={activePage === "plants"}
+            open={sidebarOpen}
+            onClick={() =>
+              setActivePage("plants")
             }
           />
         </div>
@@ -731,40 +777,36 @@ function App() {
             : "🌙 Dark"}
         </button>
       </div>
+      
+      {/* ================= DASHBOARD PAGE ================= */}
 
+  {activePage === "dashboard" && (
+
+    <>
+    
       {/* LIVE STATUS */}
 
       <div
         style={{
           display: "flex",
-
           gap: 15,
-
           marginTop: 25,
-
           flexWrap: "wrap",
         }}
       >
         <LiveStatus
           label="Fan"
-          active={
-            data.fan === "ON"
-          }
+          active={data.fan === "ON"}
         />
 
         <LiveStatus
           label="Pump"
-          active={
-            data.pump === "ON"
-          }
+          active={data.pump === "ON"}
         />
 
         <LiveStatus
           label="Window"
-          active={
-            data.window ===
-            "OPEN"
-          }
+          active={data.window === "OPEN"}
         />
       </div>
 
@@ -774,56 +816,44 @@ function App() {
         <div
           style={{
             marginTop: 25,
-
             display: "flex",
-
-            flexDirection:
-              "column",
-
+            flexDirection: "column",
             gap: 12,
           }}
         >
-          {alerts.map(
-            (alert, index) => (
-              <motion.div
-                key={index}
-                initial={{
-                  opacity: 0,
-                  y: -10,
-                }}
-                animate={{
-                  opacity: 1,
-                  y: 0,
-                }}
-                style={{
-                  background:
-                    alert.color,
-
-                  padding: 18,
-
-                  borderRadius: 16,
-
-                  fontWeight:
-                    "bold",
-                }}
-              >
-                {alert.text}
-              </motion.div>
-            )
-          )}
+          {alerts.map((alert, index) => (
+            <motion.div
+              key={index}
+              initial={{
+                opacity: 0,
+                y: -10,
+              }}
+              animate={{
+                opacity: 1,
+                y: 0,
+              }}
+              style={{
+                background: alert.color,
+                padding: 18,
+                borderRadius: 16,
+                fontWeight: "bold",
+              }}
+            >
+              {alert.text}
+            </motion.div>
+          ))}
         </div>
       )}
 
       {/* SENSOR CARDS */}
 
       <div style={theme.grid}>
+
         <StatCard
           title="Temperature"
           value={`${data.temp}°C`}
           color="#22c55e"
-          icon={
-            <FaTemperatureHigh />
-          }
+          icon={<FaTemperatureHigh />}
           theme={theme}
         />
 
@@ -842,11 +872,13 @@ function App() {
           icon={<FaLeaf />}
           theme={theme}
         />
+
       </div>
 
       {/* CHARTS */}
 
       <div style={theme.chartGrid}>
+
         <SmoothChart
           title="Temperature"
           dataKey="temp"
@@ -870,312 +902,195 @@ function App() {
           data={history}
           theme={theme}
         />
+
       </div>
 
-      {/* ================= MODE ================= */}
+    </>
+  )}
+
+  {/* ================= ANALYTICS PAGE ================= */}
+
+  {activePage === "analytics" && (
+
+    <div style={{ marginTop: 30 }}>
+
+      <h1>📈 Analytics</h1>
+
+      <div style={theme.chartGrid}>
+
+        <SmoothChart
+          title="Temperature Analytics"
+          dataKey="temp"
+          color="#22c55e"
+          data={history}
+          theme={theme}
+        />
+
+        <SmoothChart
+          title="Humidity Analytics"
+          dataKey="hum"
+          color="#38bdf8"
+          data={history}
+          theme={theme}
+        />
+
+        <SmoothChart
+          title="Soil Analytics"
+          dataKey="soil"
+          color="#facc15"
+          data={history}
+          theme={theme}
+        />
+
+      </div>
+
+    </div>
+  )}
+
+  {/* ================= SENSORS PAGE ================= */}
+
+  {activePage === "sensors" && (
+
+    <div style={{ marginTop: 30 }}>
+
+      <h1>🧪 Sensors</h1>
+
+      <div style={theme.grid}>
+
+        <StatCard
+          title="Temperature"
+          value={`${data.temp}°C`}
+          color="#22c55e"
+          icon={<FaTemperatureHigh />}
+          theme={theme}
+        />
+
+        <StatCard
+          title="Humidity"
+          value={`${data.hum}%`}
+          color="#38bdf8"
+          icon={<FaTint />}
+          theme={theme}
+        />
+
+        <StatCard
+          title="Soil Moisture"
+          value={`${data.soil}%`}
+          color="#facc15"
+          icon={<FaLeaf />}
+          theme={theme}
+        />
+
+      </div>
+
+    </div>
+  )}
+
+  {/* ================= CONTROLS PAGE ================= */}
+
+  {activePage === "controls" && (
+
+    <>
 
       <div
         style={{
           ...theme.card,
-
           marginTop: 30,
-
-          display: "flex",
-
-          justifyContent: "space-between",
-
-          alignItems: "center",
-
-          flexWrap: "wrap",
-
-          gap: 20,
         }}
       >
-        <div>
-          <h2>⚙ System Mode</h2>
 
-          <h1
-            style={{
-              color:
-                data.mode === "AUTO"
-                  ? "#22c55e"
-                  : "#3b82f6",
+        <h2>⚙ System Mode</h2>
 
-              transition: "0.3s",
-            }}
-          >
-            {data.mode}
-          </h1>
-
-          <p
-            style={{
-              opacity: 0.8,
-
-              marginTop: 8,
-            }}
-          >
-            {data.mode === "AUTO"
-              ? "ESP32 controls the greenhouse automatically."
-              : "Manual control is enabled."}
-          </p>
-        </div>
+        <h1
+          style={{
+            color:
+              data.mode === "AUTO"
+                ? "#22c55e"
+                : "#3b82f6",
+          }}
+        >
+          {data.mode}
+        </h1>
 
         <div
           style={{
             display: "flex",
-
             gap: 12,
-
-            flexWrap: "wrap",
+            marginTop: 20,
           }}
         >
-          {/* AUTO BUTTON */}
 
           <button
-            onClick={() => {
-
+            onClick={() =>
               send(
                 "greenhouse/control/mode",
                 "AUTO"
-              );
-
-            }}
-
-            style={{
-              ...buttonStyle(
-                data.mode === "AUTO",
-                "#22c55e",
-                darkMode
-              ),
-
-              minWidth: 120,
-            }}
+              )
+            }
+            style={buttonStyle(
+              data.mode === "AUTO",
+              "#22c55e",
+              darkMode
+            )}
           >
             AUTO
           </button>
 
-          {/* MANUAL BUTTON */}
-
           <button
-            onClick={() => {
-
+            onClick={() =>
               send(
                 "greenhouse/control/mode",
                 "MANUAL"
-              );
-
-            }}
-
-            style={{
-              ...buttonStyle(
-                data.mode === "MANUAL",
-                "#3b82f6",
-                darkMode
-              ),
-
-              minWidth: 120,
-            }}
+              )
+            }
+            style={buttonStyle(
+              data.mode === "MANUAL",
+              "#3b82f6",
+              darkMode
+            )}
           >
             MANUAL
           </button>
+
         </div>
+
       </div>
 
-      {/* ================= AUTO MODE STATUS ================= */}
-
-      {data.mode === "AUTO" && (
-
-        <motion.div
-          initial={{
-            opacity: 0,
-            y: 10,
-          }}
-
-          animate={{
-            opacity: 1,
-            y: 0,
-          }}
-
-          transition={{
-            duration: 0.3,
-          }}
-
-          style={{
-            ...theme.card,
-
-            marginTop: 20,
-
-            border:
-              "1px solid rgba(34,197,94,0.4)",
-
-            background:
-              "rgba(34,197,94,0.08)",
-
-            color: "#22c55e",
-
-            textAlign: "center",
-
-            fontWeight: "bold",
-          }}
-        >
-          🤖 AUTO MODE ACTIVE
-
-          <div
-            style={{
-              marginTop: 10,
-
-              fontSize: 14,
-
-              opacity: 0.85,
-
-              fontWeight: "normal",
-            }}
-          >
-            ESP32 automatically controls:
-            Fan, Pump and Window.
-          </div>
-        </motion.div>
-
-      )}
-
-      {/* ================= MANUAL MODE STATUS ================= */}
-
-      {data.mode === "MANUAL" && (
-
-        <motion.div
-          initial={{
-            opacity: 0,
-            y: 10,
-          }}
-
-          animate={{
-            opacity: 1,
-            y: 0,
-          }}
-
-          transition={{
-            duration: 0.3,
-          }}
-
-          style={{
-            ...theme.card,
-
-            marginTop: 20,
-
-            border:
-              "1px solid rgba(59,130,246,0.4)",
-
-            background:
-              "rgba(59,130,246,0.08)",
-
-            color: "#3b82f6",
-
-            textAlign: "center",
-
-            fontWeight: "bold",
-          }}
-        >
-          🎛 MANUAL MODE ACTIVE
-
-          <div
-            style={{
-              marginTop: 10,
-
-              fontSize: 14,
-
-              opacity: 0.85,
-
-              fontWeight: "normal",
-            }}
-          >
-            You can now manually control:
-            Fan, Pump and Window.
-          </div>
-        </motion.div>
-
-      )}
-
-      
-
-      
-
-      {/* EMERGENCY */}
-
       <motion.button
-        whileHover={{
-          scale: 1.03,
-        }}
-        whileTap={{
-          scale: 0.95,
-        }}
+        whileHover={{ scale: 1.03 }}
+        whileTap={{ scale: 0.95 }}
         onClick={emergencyStop}
         style={{
           marginTop: 30,
-
           width: "100%",
-
           padding: 20,
-
           border: "none",
-
           borderRadius: 20,
-
           background:
             "linear-gradient(90deg,#ef4444,#dc2626)",
-
           color: "#fff",
-
           fontSize: 20,
-
-          fontWeight:
-            "bold",
-
+          fontWeight: "bold",
           cursor: "pointer",
-
-          display: "flex",
-
-          justifyContent:
-            "center",
-
-          alignItems: "center",
-
-          gap: 12,
-
-          boxShadow:
-            "0 10px 30px rgba(239,68,68,0.4)",
         }}
       >
-        <FaExclamationTriangle />
-
-        EMERGENCY STOP
+        🚨 EMERGENCY STOP
       </motion.button>
 
-      {/* CONTROLS */}
-
-      <h2
-        style={{
-          marginTop: 40,
-        }}
-      >
+      <h2 style={{ marginTop: 40 }}>
         🎛 Control Panel
       </h2>
 
       <div style={theme.grid}>
+
         <Toggle
           label="Fan"
-          disabled={
-            data.mode ===
-            "AUTO"
-          }
-          state={
-            data.fan === "ON"
-          }
+          disabled={data.mode === "AUTO"}
+          state={data.fan === "ON"}
           onToggle={(v) =>
             send(
               "greenhouse/control/fan",
-              v
-                ? "ON"
-                : "OFF"
+              v ? "ON" : "OFF"
             )
           }
           theme={theme}
@@ -1183,20 +1098,12 @@ function App() {
 
         <Toggle
           label="Window"
-          disabled={
-            data.mode ===
-            "AUTO"
-          }
-          state={
-            data.window ===
-            "OPEN"
-          }
+          disabled={data.mode === "AUTO"}
+          state={data.window === "OPEN"}
           onToggle={(v) =>
             send(
               "greenhouse/control/window",
-              v
-                ? "OPEN"
-                : "CLOSE"
+              v ? "OPEN" : "CLOSE"
             )
           }
           theme={theme}
@@ -1204,26 +1111,84 @@ function App() {
 
         <Toggle
           label="Pump"
-          disabled={
-            data.mode ===
-            "AUTO"
-          }
-          state={
-            data.pump ===
-            "ON"
-          }
+          disabled={data.mode === "AUTO"}
+          state={data.pump === "ON"}
           onToggle={(v) =>
             send(
               "greenhouse/control/pump",
-              v
-                ? "ON"
-                : "OFF"
+              v ? "ON" : "OFF"
             )
           }
           theme={theme}
         />
+
       </div>
+
+    </>
+  )}
+
+  {/* ================= PLANTS PAGE ================= */}
+
+  {activePage === "plants" && (
+
+    <div style={{ marginTop: 30 }}>
+
+      <h1>🌱 Plant Profiles</h1>
+
+      <div style={theme.grid}>
+
+        {Object.entries(
+          plantProfiles
+        ).map(([name, plant]) => (
+
+          <motion.div
+            key={name}
+            whileHover={{
+              scale: 1.03,
+            }}
+            style={{
+              ...theme.card,
+              borderTop:
+                `5px solid ${plant.color}`,
+            }}
+          >
+
+            <h2
+              style={{
+                color: plant.color,
+              }}
+            >
+              {name}
+            </h2>
+
+            <p>
+              🌡 Temperature:
+              {" "}
+              {plant.temp}
+            </p>
+
+            <p>
+              💧 Humidity:
+              {" "}
+              {plant.hum}
+            </p>
+
+            <p>
+              🌱 Soil:
+              {" "}
+              {plant.soil}
+            </p>
+
+          </motion.div>
+
+        ))}
+
+      </div>
+
     </div>
+  )}
+
+  </div>
   );
 }
 
