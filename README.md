@@ -214,7 +214,7 @@ smart-greenhouse/
 ## 🚀 Installation
 # 1️⃣ Clone Repository
 ```
-git clone https://github.com/YOUR_USERNAME/smart-greenhouse.git
+git clone https://github.com/aliba39/smart-greenhouse.git
 ```
 # 2️⃣ Install Dashboard
 ```
