@@ -174,7 +174,7 @@ function App() {
 
   const theme = darkMode ? dark : light;
 
-  // ================= LOGIN =================
+    // ================= LOGIN =================
 
   const handleLogin = () => {
     if (
@@ -201,25 +201,11 @@ function App() {
   // ================= MQTT =================
 
   useEffect(() => {
-    if (!isAuthenticated) return;
-
     const mqttClient = mqtt.connect(MQTT_URL);
 
     mqttClient.on("connect", () => {
       setConnected(true);
-
-      mqttClient.subscribe([
-        "greenhouse/tempInside",
-        "greenhouse/humInside",
-        "greenhouse/tempOutside",
-        "greenhouse/humOutside",
-        "greenhouse/soil",
-        "greenhouse/exhaustFan",
-        "greenhouse/intakeFan",
-        "greenhouse/window",
-        "greenhouse/pump",
-        "greenhouse/mode",
-      ]);
+      mqttClient.subscribe("greenhouse/#");
     });
 
     mqttClient.on("offline", () => {
@@ -281,7 +267,7 @@ function App() {
         };
 
         setHistory((prevHistory) => [
-          ...prevHistory.slice(-30),
+          ...prevHistory.slice(-50),
           {
             time: new Date().toLocaleTimeString(),
             tempInside: updated.tempInside,
@@ -299,7 +285,7 @@ function App() {
     setClient(mqttClient);
 
     return () => mqttClient.end();
-  }, [isAuthenticated]);
+  }, []);
 
   // ================= SEND =================
 
@@ -320,15 +306,6 @@ function App() {
       send("greenhouse/control/pump", "OFF");
       send("greenhouse/control/window", "CLOSE");
     }, 300);
-
-    setData((prev) => ({
-      ...prev,
-      exhaustFan: "OFF",
-      intakeFan: "OFF",
-      pump: "OFF",
-      window: "CLOSE",
-      mode: "MANUAL",
-    }));
   };
 
   // ================= LOGIN PAGE =================
@@ -462,6 +439,13 @@ function App() {
     });
   }
 
+  if (data.tempInside <= 10) {
+    alerts.push({
+      color: "#3b82f6",
+      text: "🥶 Temperature is too low",
+    });
+  }
+
   if (data.soil <= 25) {
     alerts.push({
       color: "#eab308",
@@ -469,7 +453,46 @@ function App() {
     });
   }
 
-  // ================= MAIN APP =================
+  if (data.humInside >= 90) {
+    alerts.push({
+      color: "#8b5cf6",
+      text: "💧 Humidity too high",
+    });
+  }
+
+  // ================= PLANT PROFILES =================
+
+  const plantProfiles = {
+    Tomato: {
+      temp: "22-30°C",
+      hum: "60-80%",
+      soil: "50-70%",
+      color: "#ef4444",
+    },
+
+    Lettuce: {
+      temp: "15-22°C",
+      hum: "50-70%",
+      soil: "60-80%",
+      color: "#22c55e",
+    },
+
+    Cucumber: {
+      temp: "20-28°C",
+      hum: "70-90%",
+      soil: "65-85%",
+      color: "#38bdf8",
+    },
+
+    Pepper: {
+      temp: "18-26°C",
+      hum: "50-70%",
+      soil: "55-75%",
+      color: "#f59e0b",
+    },
+  };
+
+  // ================= RENDER =================
 
   return (
     <div style={theme.container(sidebarOpen)}>
@@ -506,11 +529,7 @@ function App() {
               cursor: "pointer",
             }}
           >
-            {sidebarOpen ? (
-              <FaChevronLeft />
-            ) : (
-              <FaChevronRight />
-            )}
+            {sidebarOpen ? <FaChevronLeft /> : <FaChevronRight />}
           </div>
         </div>
 
@@ -561,15 +580,15 @@ function App() {
             open={sidebarOpen}
             onClick={() => setActivePage("plants")}
           />
-
-          <SidebarItem
-            icon={<FaUserShield />}
-            text="Subscription"
-            active={activePage === "subscription"}
-            open={sidebarOpen}
-            onClick={() => setActivePage("subscription")}
-          />
         </div>
+
+        <SidebarItem
+          icon={<FaUserShield />}
+          text="Subscription"
+          active={activePage === "subscription"}
+          open={sidebarOpen}
+          onClick={() => setActivePage("subscription")}
+        />
 
         {/* LOGOUT */}
 
@@ -595,6 +614,32 @@ function App() {
             <FaSignOutAlt /> Logout
           </button>
         </div>
+
+        {/* LIVE PREVIEW */}
+
+        {sidebarOpen && (
+          <div
+            style={{
+              marginTop: "auto",
+              padding: 20,
+            }}
+          >
+            <div
+              style={{
+                ...theme.card,
+                padding: 16,
+              }}
+            >
+              <h4>📡 Live Preview</h4>
+
+              <p>🌡 {data.tempInside}°C</p>
+
+              <p>💧 {data.humInside}%</p>
+
+              <p>🌱 {data.soil}%</p>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* HEADER */}
@@ -639,20 +684,18 @@ function App() {
                   width: 14,
                   height: 14,
                   borderRadius: "50%",
-                  background: connected
-                    ? "#22c55e"
-                    : "#ef4444",
+                  background: connected ? "#22c55e" : "#ef4444",
                 }}
               />
 
               <span>
-                {connected
-                  ? "MQTT Connected"
-                  : "Disconnected"}
+                {connected ? "MQTT Connected" : "Disconnected"}
               </span>
             </div>
           </div>
         </div>
+
+        {/* CLOCK */}
 
         <motion.div
           whileHover={{
@@ -683,12 +726,31 @@ function App() {
             {timeNow.toLocaleDateString()}
           </div>
         </motion.div>
+
+        {/* THEME BUTTON */}
+
+        <button
+          onClick={() => setDarkMode(!darkMode)}
+          style={{
+            border: "none",
+            borderRadius: 14,
+            padding: "12px 20px",
+            cursor: "pointer",
+            fontWeight: "bold",
+            background: darkMode ? "#fff" : "#111",
+            color: darkMode ? "#111" : "#fff",
+          }}
+        >
+          {darkMode ? "☀ Light" : "🌙 Dark"}
+        </button>
       </div>
 
       {/* DASHBOARD */}
 
       {activePage === "dashboard" && (
         <>
+          {/* LIVE STATUS */}
+
           <div
             style={{
               display: "flex",
@@ -717,6 +779,8 @@ function App() {
               active={data.window === "OPEN"}
             />
           </div>
+
+          {/* ALERTS */}
 
           {alerts.length > 0 && (
             <div
@@ -751,6 +815,8 @@ function App() {
             </div>
           )}
 
+          {/* SENSOR CARDS */}
+
           <div style={theme.grid}>
             <StatCard
               title="Inside Temperature"
@@ -769,6 +835,22 @@ function App() {
             />
 
             <StatCard
+              title="Outside Temperature"
+              value={`${data.tempOutside}°C`}
+              color="#f97316"
+              icon={<FaTemperatureHigh />}
+              theme={theme}
+            />
+
+            <StatCard
+              title="Outside Humidity"
+              value={`${data.humOutside}%`}
+              color="#06b6d4"
+              icon={<FaTint />}
+              theme={theme}
+            />
+
+            <StatCard
               title="Soil Moisture"
               value={`${data.soil}%`}
               color="#facc15"
@@ -776,7 +858,127 @@ function App() {
               theme={theme}
             />
           </div>
+
+          {/* CHARTS */}
+
+          <div style={theme.chartGrid}>
+            <SmoothChart
+              title="Inside Temperature"
+              dataKey="tempInside"
+              color="#22c55e"
+              data={history}
+              theme={theme}
+            />
+
+            <SmoothChart
+              title="Inside Humidity"
+              dataKey="humInside"
+              color="#38bdf8"
+              data={history}
+              theme={theme}
+            />
+
+            <SmoothChart
+              title="Soil Moisture"
+              dataKey="soil"
+              color="#facc15"
+              data={history}
+              theme={theme}
+            />
+          </div>
         </>
+      )}
+
+      {/* ANALYTICS */}
+
+      {activePage === "analytics" && (
+        <div style={{ marginTop: 30 }}>
+          <h1>📈 Analytics</h1>
+
+          <div style={theme.chartGrid}>
+            <SmoothChart
+              title="Inside Temperature"
+              dataKey="tempInside"
+              color="#22c55e"
+              data={history}
+              theme={theme}
+            />
+
+            <SmoothChart
+              title="Inside Humidity"
+              dataKey="humInside"
+              color="#38bdf8"
+              data={history}
+              theme={theme}
+            />
+
+            <SmoothChart
+              title="Outside Temperature"
+              dataKey="tempOutside"
+              color="#f97316"
+              data={history}
+              theme={theme}
+            />
+
+            <SmoothChart
+              title="Outside Humidity"
+              dataKey="humOutside"
+              color="#06b6d4"
+              data={history}
+              theme={theme}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* SENSORS */}
+
+      {activePage === "sensors" && (
+        <div style={{ marginTop: 30 }}>
+          <h1>🧪 Sensors</h1>
+
+          <div style={theme.grid}>
+            <StatCard
+              title="Inside Temperature"
+              value={`${data.tempInside}°C`}
+              color="#22c55e"
+              icon={<FaTemperatureHigh />}
+              theme={theme}
+            />
+
+            <StatCard
+              title="Inside Humidity"
+              value={`${data.humInside}%`}
+              color="#38bdf8"
+              icon={<FaTint />}
+              theme={theme}
+            />
+
+            <StatCard
+              title="Outside Temperature"
+              value={`${data.tempOutside}°C`}
+              color="#f97316"
+              icon={<FaTemperatureHigh />}
+              theme={theme}
+            />
+
+            <StatCard
+              title="Outside Humidity"
+              value={`${data.humOutside}%`}
+              color="#06b6d4"
+              icon={<FaTint />}
+              theme={theme}
+            />
+
+            <StatCard
+              title="Soil Moisture"
+              value={`${data.soil}%`}
+              color="#facc15"
+              icon={<FaLeaf />}
+              theme={theme}
+            />
+          </div>
+        </div>
       )}
 
       {/* SUBSCRIPTION */}
@@ -1011,14 +1213,19 @@ function App() {
 
       {/* CONTROLS */}
 
+      {/* ================= CONTROLS PAGE ================= */}
+
       {activePage === "controls" && (
+
         <>
+
           <div
             style={{
               ...theme.card,
               marginTop: 30,
             }}
           >
+
             <h2>⚙ System Mode</h2>
 
             <h1
@@ -1039,6 +1246,7 @@ function App() {
                 marginTop: 20,
               }}
             >
+
               <button
                 onClick={() => {
                   send(
@@ -1046,7 +1254,7 @@ function App() {
                     "AUTO"
                   );
 
-                  setData((prev) => ({
+                  setData(prev => ({
                     ...prev,
                     mode: "AUTO",
                   }));
@@ -1067,7 +1275,7 @@ function App() {
                     "MANUAL"
                   );
 
-                  setData((prev) => ({
+                  setData(prev => ({
                     ...prev,
                     mode: "MANUAL",
                   }));
@@ -1080,8 +1288,12 @@ function App() {
               >
                 MANUAL
               </button>
+
             </div>
+
           </div>
+
+          {/* EMERGENCY BUTTON */}
 
           <motion.button
             whileHover={{ scale: 1.03 }}
@@ -1104,11 +1316,14 @@ function App() {
             <FaExclamationTriangle /> EMERGENCY STOP
           </motion.button>
 
+          {/* CONTROL PANEL */}
+
           <h2 style={{ marginTop: 40 }}>
             🎛 Control Panel
           </h2>
 
           <div style={theme.grid}>
+
             {/* EXHAUST FAN */}
 
             <Toggle
@@ -1116,16 +1331,15 @@ function App() {
               disabled={data.mode === "AUTO"}
               state={data.exhaustFan === "ON"}
               onToggle={(v) => {
-                const value = v ? "ON" : "OFF";
 
-                setData((prev) => ({
+                setData(prev => ({
                   ...prev,
-                  exhaustFan: value,
+                  exhaustFan: v ? "ON" : "OFF",
                 }));
 
                 send(
-                  "greenhouse/control/exhaustFan",
-                  value
+                  "greenhouse/control/fan",
+                  v ? "ON" : "OFF"
                 );
               }}
               theme={theme}
@@ -1138,16 +1352,15 @@ function App() {
               disabled={data.mode === "AUTO"}
               state={data.intakeFan === "ON"}
               onToggle={(v) => {
-                const value = v ? "ON" : "OFF";
 
-                setData((prev) => ({
+                setData(prev => ({
                   ...prev,
-                  intakeFan: value,
+                  intakeFan: v ? "ON" : "OFF",
                 }));
 
                 send(
                   "greenhouse/control/intakeFan",
-                  value
+                  v ? "ON" : "OFF"
                 );
               }}
               theme={theme}
@@ -1160,16 +1373,15 @@ function App() {
               disabled={data.mode === "AUTO"}
               state={data.window === "OPEN"}
               onToggle={(v) => {
-                const value = v ? "OPEN" : "CLOSE";
 
-                setData((prev) => ({
+                setData(prev => ({
                   ...prev,
-                  window: value,
+                  window: v ? "OPEN" : "CLOSE",
                 }));
 
                 send(
                   "greenhouse/control/window",
-                  value
+                  v ? "OPEN" : "CLOSE"
                 );
               }}
               theme={theme}
@@ -1182,22 +1394,68 @@ function App() {
               disabled={data.mode === "AUTO"}
               state={data.pump === "ON"}
               onToggle={(v) => {
-                const value = v ? "ON" : "OFF";
 
-                setData((prev) => ({
+                setData(prev => ({
                   ...prev,
-                  pump: value,
+                  pump: v ? "ON" : "OFF",
                 }));
 
                 send(
                   "greenhouse/control/pump",
-                  value
+                  v ? "ON" : "OFF"
                 );
               }}
               theme={theme}
             />
+
           </div>
+
         </>
+      )}
+
+      {/* PLANTS */}
+
+      {activePage === "plants" && (
+        <div style={{ marginTop: 30 }}>
+          <h1>🌱 Plant Profiles</h1>
+
+          <div style={theme.grid}>
+            {Object.entries(plantProfiles).map(
+              ([name, plant]) => (
+                <motion.div
+                  key={name}
+                  whileHover={{
+                    scale: 1.03,
+                  }}
+                  style={{
+                    ...theme.card,
+                    borderTop: `5px solid ${plant.color}`,
+                  }}
+                >
+                  <h2
+                    style={{
+                      color: plant.color,
+                    }}
+                  >
+                    {name}
+                  </h2>
+
+                  <p>
+                    🌡 Temperature: {plant.temp}
+                  </p>
+
+                  <p>
+                    💧 Humidity: {plant.hum}
+                  </p>
+
+                  <p>
+                    🌱 Soil: {plant.soil}
+                  </p>
+                </motion.div>
+              )
+            )}
+          </div>
+        </div>
       )}
     </div>
   );
@@ -1408,6 +1666,95 @@ function Toggle({
   );
 }
 
+// ================= CHART =================
+
+function SmoothChart({
+  title,
+  dataKey,
+  data,
+  color,
+  theme,
+}) {
+  return (
+    <motion.div
+      whileHover={{
+        scale: 1.02,
+      }}
+      style={theme.card}
+    >
+      <h3>{title}</h3>
+
+      <ResponsiveContainer
+        width="100%"
+        height={280}
+      >
+        <AreaChart data={data}>
+          <defs>
+            <linearGradient
+              id={dataKey}
+              x1="0"
+              y1="0"
+              x2="0"
+              y2="1"
+            >
+              <stop
+                offset="5%"
+                stopColor={color}
+                stopOpacity={0.8}
+              />
+
+              <stop
+                offset="95%"
+                stopColor={color}
+                stopOpacity={0}
+              />
+            </linearGradient>
+          </defs>
+
+          <CartesianGrid
+            strokeDasharray="3 3"
+            stroke={theme.chartGridColor}
+          />
+
+          <XAxis
+            dataKey="time"
+            angle={-35}
+            textAnchor="end"
+            height={70}
+            minTickGap={20}
+          />
+
+          <YAxis />
+
+          <Tooltip
+            contentStyle={{
+              background: theme.tooltipBg,
+              border: "none",
+              borderRadius: 12,
+              color: theme.tooltipText,
+            }}
+          />
+
+          <Area
+            type="monotone"
+            dataKey={dataKey}
+            stroke={color}
+            fill={`url(#${dataKey})`}
+            strokeWidth={3}
+          />
+
+          <Line
+            type="monotone"
+            dataKey={dataKey}
+            stroke={color}
+            dot={false}
+          />
+        </AreaChart>
+      </ResponsiveContainer>
+    </motion.div>
+  );
+}
+
 // ================= BUTTON STYLE =================
 
 function buttonStyle(active, color, darkMode) {
@@ -1429,7 +1776,6 @@ function buttonStyle(active, color, darkMode) {
     cursor: "pointer",
   };
 }
-
 // ================= INPUT STYLE =================
 
 const inputStyle = {
@@ -1443,5 +1789,4 @@ const inputStyle = {
   fontSize: 16,
   boxSizing: "border-box",
 };
-
 export default App;
