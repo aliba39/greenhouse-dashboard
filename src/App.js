@@ -16,7 +16,6 @@ import {
   FaChevronLeft,
   FaChevronRight,
   FaSeedling,
-  FaFan,
 } from "react-icons/fa";
 
 import {
