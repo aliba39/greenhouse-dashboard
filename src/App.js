@@ -16,6 +16,9 @@ import {
   FaChevronLeft,
   FaChevronRight,
   FaSeedling,
+  FaSignOutAlt,
+  FaUserShield,
+  FaCreditCard,
 } from "react-icons/fa";
 
 import {
@@ -125,6 +128,19 @@ const light = {
 // ================= APP =================
 
 function App() {
+  // ================= AUTH =================
+
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  const [loginData, setLoginData] = useState({
+    username: "",
+    password: "",
+  });
+
+  const [loginError, setLoginError] = useState("");
+
+  // ================= STATES =================
+
   const [client, setClient] = useState(null);
 
   const [connected, setConnected] = useState(false);
@@ -158,6 +174,20 @@ function App() {
 
   const theme = darkMode ? dark : light;
 
+  // ================= LOGIN =================
+
+  const handleLogin = () => {
+    if (
+      loginData.username === "admin" &&
+      loginData.password === "admin123"
+    ) {
+      setIsAuthenticated(true);
+      setLoginError("");
+    } else {
+      setLoginError("Invalid username or password");
+    }
+  };
+
   // ================= CLOCK =================
 
   useEffect(() => {
@@ -171,11 +201,25 @@ function App() {
   // ================= MQTT =================
 
   useEffect(() => {
+    if (!isAuthenticated) return;
+
     const mqttClient = mqtt.connect(MQTT_URL);
 
     mqttClient.on("connect", () => {
       setConnected(true);
-      mqttClient.subscribe("greenhouse/#");
+
+      mqttClient.subscribe([
+        "greenhouse/tempInside",
+        "greenhouse/humInside",
+        "greenhouse/tempOutside",
+        "greenhouse/humOutside",
+        "greenhouse/soil",
+        "greenhouse/exhaustFan",
+        "greenhouse/intakeFan",
+        "greenhouse/window",
+        "greenhouse/pump",
+        "greenhouse/mode",
+      ]);
     });
 
     mqttClient.on("offline", () => {
@@ -237,7 +281,7 @@ function App() {
         };
 
         setHistory((prevHistory) => [
-          ...prevHistory.slice(-50),
+          ...prevHistory.slice(-30),
           {
             time: new Date().toLocaleTimeString(),
             tempInside: updated.tempInside,
@@ -255,7 +299,7 @@ function App() {
     setClient(mqttClient);
 
     return () => mqttClient.end();
-  }, []);
+  }, [isAuthenticated]);
 
   // ================= SEND =================
 
@@ -276,7 +320,136 @@ function App() {
       send("greenhouse/control/pump", "OFF");
       send("greenhouse/control/window", "CLOSE");
     }, 300);
+
+    setData((prev) => ({
+      ...prev,
+      exhaustFan: "OFF",
+      intakeFan: "OFF",
+      pump: "OFF",
+      window: "CLOSE",
+      mode: "MANUAL",
+    }));
   };
+
+  // ================= LOGIN PAGE =================
+
+  if (!isAuthenticated) {
+    return (
+      <div
+        style={{
+          minHeight: "100vh",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          background:
+            "linear-gradient(135deg,#0f172a,#111827,#020617)",
+          fontFamily: "Segoe UI",
+        }}
+      >
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          style={{
+            width: 400,
+            background: "rgba(255,255,255,0.08)",
+            padding: 40,
+            borderRadius: 30,
+            backdropFilter: "blur(20px)",
+            color: "#fff",
+            boxShadow: "0 8px 40px rgba(0,0,0,0.4)",
+          }}
+        >
+          <div style={{ textAlign: "center" }}>
+            <img
+              src={logo}
+              alt="logo"
+              style={{
+                width: 100,
+                marginBottom: 20,
+              }}
+            />
+
+            <h1>GreenSense</h1>
+
+            <p>Smart Greenhouse Dashboard</p>
+          </div>
+
+          <div style={{ marginTop: 30 }}>
+            <input
+              type="text"
+              placeholder="Username"
+              value={loginData.username}
+              onChange={(e) =>
+                setLoginData({
+                  ...loginData,
+                  username: e.target.value,
+                })
+              }
+              style={inputStyle}
+            />
+
+            <input
+              type="password"
+              placeholder="Password"
+              value={loginData.password}
+              onChange={(e) =>
+                setLoginData({
+                  ...loginData,
+                  password: e.target.value,
+                })
+              }
+              style={{
+                ...inputStyle,
+                marginTop: 15,
+              }}
+            />
+
+            {loginError && (
+              <p
+                style={{
+                  color: "#ef4444",
+                  marginTop: 10,
+                }}
+              >
+                {loginError}
+              </p>
+            )}
+
+            <button
+              onClick={handleLogin}
+              style={{
+                width: "100%",
+                marginTop: 20,
+                padding: 15,
+                border: "none",
+                borderRadius: 16,
+                background:
+                  "linear-gradient(90deg,#22c55e,#16a34a)",
+                color: "#fff",
+                fontWeight: "bold",
+                fontSize: 16,
+                cursor: "pointer",
+              }}
+            >
+              <FaUserShield /> LOGIN
+            </button>
+
+            <div
+              style={{
+                marginTop: 20,
+                textAlign: "center",
+                opacity: 0.8,
+              }}
+            >
+              Username: admin
+              <br />
+              Password: admin123
+            </div>
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
 
   // ================= ALERTS =================
 
@@ -289,13 +462,6 @@ function App() {
     });
   }
 
-  if (data.tempInside <= 10) {
-    alerts.push({
-      color: "#3b82f6",
-      text: "🥶 Temperature is too low",
-    });
-  }
-
   if (data.soil <= 25) {
     alerts.push({
       color: "#eab308",
@@ -303,46 +469,7 @@ function App() {
     });
   }
 
-  if (data.humInside >= 90) {
-    alerts.push({
-      color: "#8b5cf6",
-      text: "💧 Humidity too high",
-    });
-  }
-
-  // ================= PLANT PROFILES =================
-
-  const plantProfiles = {
-    Tomato: {
-      temp: "22-30°C",
-      hum: "60-80%",
-      soil: "50-70%",
-      color: "#ef4444",
-    },
-
-    Lettuce: {
-      temp: "15-22°C",
-      hum: "50-70%",
-      soil: "60-80%",
-      color: "#22c55e",
-    },
-
-    Cucumber: {
-      temp: "20-28°C",
-      hum: "70-90%",
-      soil: "65-85%",
-      color: "#38bdf8",
-    },
-
-    Pepper: {
-      temp: "18-26°C",
-      hum: "50-70%",
-      soil: "55-75%",
-      color: "#f59e0b",
-    },
-  };
-
-  // ================= RENDER =================
+  // ================= MAIN APP =================
 
   return (
     <div style={theme.container(sidebarOpen)}>
@@ -379,7 +506,11 @@ function App() {
               cursor: "pointer",
             }}
           >
-            {sidebarOpen ? <FaChevronLeft /> : <FaChevronRight />}
+            {sidebarOpen ? (
+              <FaChevronLeft />
+            ) : (
+              <FaChevronRight />
+            )}
           </div>
         </div>
 
@@ -430,33 +561,40 @@ function App() {
             open={sidebarOpen}
             onClick={() => setActivePage("plants")}
           />
+
+          <SidebarItem
+            icon={<FaUserShield />}
+            text="Subscription"
+            active={activePage === "subscription"}
+            open={sidebarOpen}
+            onClick={() => setActivePage("subscription")}
+          />
         </div>
 
-        {/* LIVE PREVIEW */}
+        {/* LOGOUT */}
 
-        {sidebarOpen && (
-          <div
+        <div
+          style={{
+            marginTop: "auto",
+            padding: 20,
+          }}
+        >
+          <button
+            onClick={() => setIsAuthenticated(false)}
             style={{
-              marginTop: "auto",
-              padding: 20,
+              width: "100%",
+              padding: 12,
+              border: "none",
+              borderRadius: 14,
+              background: "#ef4444",
+              color: "#fff",
+              cursor: "pointer",
+              fontWeight: "bold",
             }}
           >
-            <div
-              style={{
-                ...theme.card,
-                padding: 16,
-              }}
-            >
-              <h4>📡 Live Preview</h4>
-
-              <p>🌡 {data.tempInside}°C</p>
-
-              <p>💧 {data.humInside}%</p>
-
-              <p>🌱 {data.soil}%</p>
-            </div>
-          </div>
-        )}
+            <FaSignOutAlt /> Logout
+          </button>
+        </div>
       </div>
 
       {/* HEADER */}
@@ -501,18 +639,20 @@ function App() {
                   width: 14,
                   height: 14,
                   borderRadius: "50%",
-                  background: connected ? "#22c55e" : "#ef4444",
+                  background: connected
+                    ? "#22c55e"
+                    : "#ef4444",
                 }}
               />
 
               <span>
-                {connected ? "MQTT Connected" : "Disconnected"}
+                {connected
+                  ? "MQTT Connected"
+                  : "Disconnected"}
               </span>
             </div>
           </div>
         </div>
-
-        {/* CLOCK */}
 
         <motion.div
           whileHover={{
@@ -543,31 +683,12 @@ function App() {
             {timeNow.toLocaleDateString()}
           </div>
         </motion.div>
-
-        {/* THEME BUTTON */}
-
-        <button
-          onClick={() => setDarkMode(!darkMode)}
-          style={{
-            border: "none",
-            borderRadius: 14,
-            padding: "12px 20px",
-            cursor: "pointer",
-            fontWeight: "bold",
-            background: darkMode ? "#fff" : "#111",
-            color: darkMode ? "#111" : "#fff",
-          }}
-        >
-          {darkMode ? "☀ Light" : "🌙 Dark"}
-        </button>
       </div>
 
       {/* DASHBOARD */}
 
       {activePage === "dashboard" && (
         <>
-          {/* LIVE STATUS */}
-
           <div
             style={{
               display: "flex",
@@ -596,8 +717,6 @@ function App() {
               active={data.window === "OPEN"}
             />
           </div>
-
-          {/* ALERTS */}
 
           {alerts.length > 0 && (
             <div
@@ -632,8 +751,6 @@ function App() {
             </div>
           )}
 
-          {/* SENSOR CARDS */}
-
           <div style={theme.grid}>
             <StatCard
               title="Inside Temperature"
@@ -652,167 +769,256 @@ function App() {
             />
 
             <StatCard
-              title="Outside Temperature"
-              value={`${data.tempOutside}°C`}
-              color="#f97316"
-              icon={<FaTemperatureHigh />}
-              theme={theme}
-            />
-
-            <StatCard
-              title="Outside Humidity"
-              value={`${data.humOutside}%`}
-              color="#06b6d4"
-              icon={<FaTint />}
-              theme={theme}
-            />
-
-            <StatCard
               title="Soil Moisture"
               value={`${data.soil}%`}
               color="#facc15"
               icon={<FaLeaf />}
-              theme={theme}
-            />
-          </div>
-
-          {/* CHARTS */}
-
-          <div style={theme.chartGrid}>
-            <SmoothChart
-              title="Inside Temperature"
-              dataKey="tempInside"
-              color="#22c55e"
-              data={history}
-              theme={theme}
-            />
-
-            <SmoothChart
-              title="Inside Humidity"
-              dataKey="humInside"
-              color="#38bdf8"
-              data={history}
-              theme={theme}
-            />
-
-            <SmoothChart
-              title="Soil Moisture"
-              dataKey="soil"
-              color="#facc15"
-              data={history}
               theme={theme}
             />
           </div>
         </>
       )}
 
-      {/* ANALYTICS */}
+      {/* SUBSCRIPTION */}
 
-      {activePage === "analytics" && (
+      {activePage === "subscription" && (
         <div style={{ marginTop: 30 }}>
-          <h1>📈 Analytics</h1>
-
-          <div style={theme.chartGrid}>
-            <SmoothChart
-              title="Inside Temperature"
-              dataKey="tempInside"
-              color="#22c55e"
-              data={history}
-              theme={theme}
-            />
-
-            <SmoothChart
-              title="Inside Humidity"
-              dataKey="humInside"
-              color="#38bdf8"
-              data={history}
-              theme={theme}
-            />
-
-            <SmoothChart
-              title="Outside Temperature"
-              dataKey="tempOutside"
-              color="#f97316"
-              data={history}
-              theme={theme}
-            />
-
-            <SmoothChart
-              title="Outside Humidity"
-              dataKey="humOutside"
-              color="#06b6d4"
-              data={history}
-              theme={theme}
-            />
-          </div>
-        </div>
-      )}
-
-      {/* SENSORS */}
-
-      {activePage === "sensors" && (
-        <div style={{ marginTop: 30 }}>
-          <h1>🧪 Sensors</h1>
+          <h1>💳 Subscription Plans</h1>
 
           <div style={theme.grid}>
-            <StatCard
-              title="Inside Temperature"
-              value={`${data.tempInside}°C`}
-              color="#22c55e"
-              icon={<FaTemperatureHigh />}
-              theme={theme}
-            />
+            {/* BASIC */}
 
-            <StatCard
-              title="Inside Humidity"
-              value={`${data.humInside}%`}
-              color="#38bdf8"
-              icon={<FaTint />}
-              theme={theme}
-            />
+            <motion.div
+              whileHover={{ scale: 1.03 }}
+              style={{
+                ...theme.card,
+                borderTop: "5px solid #38bdf8",
+              }}
+            >
+              <h2 style={{ color: "#38bdf8" }}>
+                Basic Plan
+              </h2>
 
-            <StatCard
-              title="Outside Temperature"
-              value={`${data.tempOutside}°C`}
-              color="#f97316"
-              icon={<FaTemperatureHigh />}
-              theme={theme}
-            />
+              <h1>$9 / month</h1>
 
-            <StatCard
-              title="Outside Humidity"
-              value={`${data.humOutside}%`}
-              color="#06b6d4"
-              icon={<FaTint />}
-              theme={theme}
-            />
+              <p>✔ Live Sensor Monitoring</p>
+              <p>✔ MQTT Connection</p>
+              <p>✔ Basic Analytics</p>
+              <p>✔ Manual Controls</p>
 
-            <StatCard
-              title="Soil Moisture"
-              value={`${data.soil}%`}
-              color="#facc15"
-              icon={<FaLeaf />}
-              theme={theme}
-            />
+              <button
+                style={{
+                  marginTop: 20,
+                  width: "100%",
+                  padding: 14,
+                  border: "none",
+                  borderRadius: 14,
+                  background: "#38bdf8",
+                  color: "#fff",
+                  fontWeight: "bold",
+                  cursor: "pointer",
+                }}
+              >
+                Subscribe
+              </button>
+            </motion.div>
+
+            {/* PRO */}
+
+            <motion.div
+              whileHover={{ scale: 1.03 }}
+              style={{
+                ...theme.card,
+                borderTop: "5px solid #22c55e",
+                position: "relative",
+              }}
+            >
+              <div
+                style={{
+                  position: "absolute",
+                  top: 15,
+                  right: 15,
+                  background: "#22c55e",
+                  color: "#fff",
+                  padding: "6px 12px",
+                  borderRadius: 20,
+                  fontSize: 12,
+                  fontWeight: "bold",
+                }}
+              >
+                MOST POPULAR
+              </div>
+
+              <h2 style={{ color: "#22c55e" }}>
+                Pro Plan
+              </h2>
+
+              <h1>$19 / month</h1>
+
+              <p>✔ Everything in Basic</p>
+              <p>✔ AI Automation</p>
+              <p>✔ Advanced Analytics</p>
+              <p>✔ Smart Alerts</p>
+              <p>✔ Remote Access</p>
+
+              <button
+                style={{
+                  marginTop: 20,
+                  width: "100%",
+                  padding: 14,
+                  border: "none",
+                  borderRadius: 14,
+                  background: "#22c55e",
+                  color: "#fff",
+                  fontWeight: "bold",
+                  cursor: "pointer",
+                }}
+              >
+                Upgrade
+              </button>
+            </motion.div>
+
+            {/* ENTERPRISE */}
+
+            <motion.div
+              whileHover={{ scale: 1.03 }}
+              style={{
+                ...theme.card,
+                borderTop: "5px solid #f59e0b",
+              }}
+            >
+              <h2 style={{ color: "#f59e0b" }}>
+                Enterprise
+              </h2>
+
+              <h1>$49 / month</h1>
+
+              <p>✔ Unlimited Greenhouses</p>
+              <p>✔ Full AI Control</p>
+              <p>✔ Team Management</p>
+              <p>✔ Cloud Backup</p>
+              <p>✔ 24/7 Support</p>
+
+              <button
+                style={{
+                  marginTop: 20,
+                  width: "100%",
+                  padding: 14,
+                  border: "none",
+                  borderRadius: 14,
+                  background: "#f59e0b",
+                  color: "#fff",
+                  fontWeight: "bold",
+                  cursor: "pointer",
+                }}
+              >
+                Contact Us
+              </button>
+            </motion.div>
           </div>
+
+          {/* PAYMENT CARD */}
+
+          <motion.div
+            whileHover={{ scale: 1.01 }}
+            style={{
+              ...theme.card,
+              marginTop: 40,
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 12,
+                marginBottom: 20,
+              }}
+            >
+              <FaCreditCard
+                size={30}
+                color="#22c55e"
+              />
+
+              <h2>Payment Information</h2>
+            </div>
+
+            <div style={theme.grid}>
+              <input
+                placeholder="Card Holder Name"
+                style={{
+                  ...inputStyle,
+                  color: darkMode ? "#fff" : "#111",
+                  background: darkMode
+                    ? "rgba(255,255,255,0.08)"
+                    : "#fff",
+                }}
+              />
+
+              <input
+                placeholder="Card Number"
+                style={{
+                  ...inputStyle,
+                  color: darkMode ? "#fff" : "#111",
+                  background: darkMode
+                    ? "rgba(255,255,255,0.08)"
+                    : "#fff",
+                }}
+              />
+
+              <input
+                placeholder="MM/YY"
+                style={{
+                  ...inputStyle,
+                  color: darkMode ? "#fff" : "#111",
+                  background: darkMode
+                    ? "rgba(255,255,255,0.08)"
+                    : "#fff",
+                }}
+              />
+
+              <input
+                placeholder="CVV"
+                style={{
+                  ...inputStyle,
+                  color: darkMode ? "#fff" : "#111",
+                  background: darkMode
+                    ? "rgba(255,255,255,0.08)"
+                    : "#fff",
+                }}
+              />
+            </div>
+
+            <button
+              style={{
+                marginTop: 25,
+                width: "100%",
+                padding: 16,
+                border: "none",
+                borderRadius: 16,
+                background:
+                  "linear-gradient(90deg,#22c55e,#16a34a)",
+                color: "#fff",
+                fontWeight: "bold",
+                fontSize: 16,
+                cursor: "pointer",
+              }}
+            >
+              Complete Payment
+            </button>
+          </motion.div>
         </div>
       )}
 
       {/* CONTROLS */}
 
-      {/* ================= CONTROLS PAGE ================= */}
-
       {activePage === "controls" && (
-
         <>
-
           <div
             style={{
               ...theme.card,
               marginTop: 30,
             }}
           >
-
             <h2>⚙ System Mode</h2>
 
             <h1
@@ -833,7 +1039,6 @@ function App() {
                 marginTop: 20,
               }}
             >
-
               <button
                 onClick={() => {
                   send(
@@ -841,7 +1046,7 @@ function App() {
                     "AUTO"
                   );
 
-                  setData(prev => ({
+                  setData((prev) => ({
                     ...prev,
                     mode: "AUTO",
                   }));
@@ -862,7 +1067,7 @@ function App() {
                     "MANUAL"
                   );
 
-                  setData(prev => ({
+                  setData((prev) => ({
                     ...prev,
                     mode: "MANUAL",
                   }));
@@ -875,12 +1080,8 @@ function App() {
               >
                 MANUAL
               </button>
-
             </div>
-
           </div>
-
-          {/* EMERGENCY BUTTON */}
 
           <motion.button
             whileHover={{ scale: 1.03 }}
@@ -903,14 +1104,11 @@ function App() {
             <FaExclamationTriangle /> EMERGENCY STOP
           </motion.button>
 
-          {/* CONTROL PANEL */}
-
           <h2 style={{ marginTop: 40 }}>
             🎛 Control Panel
           </h2>
 
           <div style={theme.grid}>
-
             {/* EXHAUST FAN */}
 
             <Toggle
@@ -918,15 +1116,16 @@ function App() {
               disabled={data.mode === "AUTO"}
               state={data.exhaustFan === "ON"}
               onToggle={(v) => {
+                const value = v ? "ON" : "OFF";
 
-                setData(prev => ({
+                setData((prev) => ({
                   ...prev,
-                  exhaustFan: v ? "ON" : "OFF",
+                  exhaustFan: value,
                 }));
 
                 send(
-                  "greenhouse/control/fan",
-                  v ? "ON" : "OFF"
+                  "greenhouse/control/exhaustFan",
+                  value
                 );
               }}
               theme={theme}
@@ -939,15 +1138,16 @@ function App() {
               disabled={data.mode === "AUTO"}
               state={data.intakeFan === "ON"}
               onToggle={(v) => {
+                const value = v ? "ON" : "OFF";
 
-                setData(prev => ({
+                setData((prev) => ({
                   ...prev,
-                  intakeFan: v ? "ON" : "OFF",
+                  intakeFan: value,
                 }));
 
                 send(
                   "greenhouse/control/intakeFan",
-                  v ? "ON" : "OFF"
+                  value
                 );
               }}
               theme={theme}
@@ -960,15 +1160,16 @@ function App() {
               disabled={data.mode === "AUTO"}
               state={data.window === "OPEN"}
               onToggle={(v) => {
+                const value = v ? "OPEN" : "CLOSE";
 
-                setData(prev => ({
+                setData((prev) => ({
                   ...prev,
-                  window: v ? "OPEN" : "CLOSE",
+                  window: value,
                 }));
 
                 send(
                   "greenhouse/control/window",
-                  v ? "OPEN" : "CLOSE"
+                  value
                 );
               }}
               theme={theme}
@@ -981,68 +1182,22 @@ function App() {
               disabled={data.mode === "AUTO"}
               state={data.pump === "ON"}
               onToggle={(v) => {
+                const value = v ? "ON" : "OFF";
 
-                setData(prev => ({
+                setData((prev) => ({
                   ...prev,
-                  pump: v ? "ON" : "OFF",
+                  pump: value,
                 }));
 
                 send(
                   "greenhouse/control/pump",
-                  v ? "ON" : "OFF"
+                  value
                 );
               }}
               theme={theme}
             />
-
           </div>
-
         </>
-      )}
-
-      {/* PLANTS */}
-
-      {activePage === "plants" && (
-        <div style={{ marginTop: 30 }}>
-          <h1>🌱 Plant Profiles</h1>
-
-          <div style={theme.grid}>
-            {Object.entries(plantProfiles).map(
-              ([name, plant]) => (
-                <motion.div
-                  key={name}
-                  whileHover={{
-                    scale: 1.03,
-                  }}
-                  style={{
-                    ...theme.card,
-                    borderTop: `5px solid ${plant.color}`,
-                  }}
-                >
-                  <h2
-                    style={{
-                      color: plant.color,
-                    }}
-                  >
-                    {name}
-                  </h2>
-
-                  <p>
-                    🌡 Temperature: {plant.temp}
-                  </p>
-
-                  <p>
-                    💧 Humidity: {plant.hum}
-                  </p>
-
-                  <p>
-                    🌱 Soil: {plant.soil}
-                  </p>
-                </motion.div>
-              )
-            )}
-          </div>
-        </div>
       )}
     </div>
   );
@@ -1253,95 +1408,6 @@ function Toggle({
   );
 }
 
-// ================= CHART =================
-
-function SmoothChart({
-  title,
-  dataKey,
-  data,
-  color,
-  theme,
-}) {
-  return (
-    <motion.div
-      whileHover={{
-        scale: 1.02,
-      }}
-      style={theme.card}
-    >
-      <h3>{title}</h3>
-
-      <ResponsiveContainer
-        width="100%"
-        height={280}
-      >
-        <AreaChart data={data}>
-          <defs>
-            <linearGradient
-              id={dataKey}
-              x1="0"
-              y1="0"
-              x2="0"
-              y2="1"
-            >
-              <stop
-                offset="5%"
-                stopColor={color}
-                stopOpacity={0.8}
-              />
-
-              <stop
-                offset="95%"
-                stopColor={color}
-                stopOpacity={0}
-              />
-            </linearGradient>
-          </defs>
-
-          <CartesianGrid
-            strokeDasharray="3 3"
-            stroke={theme.chartGridColor}
-          />
-
-          <XAxis
-            dataKey="time"
-            angle={-35}
-            textAnchor="end"
-            height={70}
-            minTickGap={20}
-          />
-
-          <YAxis />
-
-          <Tooltip
-            contentStyle={{
-              background: theme.tooltipBg,
-              border: "none",
-              borderRadius: 12,
-              color: theme.tooltipText,
-            }}
-          />
-
-          <Area
-            type="monotone"
-            dataKey={dataKey}
-            stroke={color}
-            fill={`url(#${dataKey})`}
-            strokeWidth={3}
-          />
-
-          <Line
-            type="monotone"
-            dataKey={dataKey}
-            stroke={color}
-            dot={false}
-          />
-        </AreaChart>
-      </ResponsiveContainer>
-    </motion.div>
-  );
-}
-
 // ================= BUTTON STYLE =================
 
 function buttonStyle(active, color, darkMode) {
@@ -1363,5 +1429,19 @@ function buttonStyle(active, color, darkMode) {
     cursor: "pointer",
   };
 }
+
+// ================= INPUT STYLE =================
+
+const inputStyle = {
+  width: "100%",
+  padding: 15,
+  borderRadius: 14,
+  border: "1px solid rgba(255,255,255,0.15)",
+  background: "rgba(255,255,255,0.08)",
+  color: "#fff",
+  outline: "none",
+  fontSize: 16,
+  boxSizing: "border-box",
+};
 
 export default App;
