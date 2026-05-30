@@ -33,7 +33,7 @@ import {
   Area,
 } from "recharts";
 
-const MQTT_URL = "ws://localhost:9001";
+const MQTT_URL = "wss://localhost:9001";
 
 // ─── NAV ITEMS ────────────────────────────────────────────────────────────────
 const NAV_ITEMS = [
@@ -132,7 +132,7 @@ export default function App() {
   // ── MQTT (only after auth) ────────────────────────────────────────────────
   useEffect(() => {
     if (!isAuthenticated) return;
-    const c = mqtt.connect(MQTT_URL);
+    const c = mqtt.connect(MQTT_URL, {rejectUnauthorized: false,});
     c.on("connect", () => { setConnected(true);  c.subscribe("greenhouse/#"); });
     c.on("offline", () => setConnected(false));
     c.on("error",   () => setConnected(false));
